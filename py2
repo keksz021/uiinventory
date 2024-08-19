@@ -1,0 +1,117 @@
+# Search
+
+			self.inventoryTab.append(self.GetChild("Inventory_Tab_04"))
+
+# add after
+
+			slotIdxList = []
+			for j in xrange(4):
+				self.GetChild("Equipment_Tab_"+str(j)).SAFE_SetEvent(self.SetEquipmentPage, j)
+				wndEquip = self.GetChild("EquipmentSlot_"+str(j))
+				slotIdxList.append(wndEquip.GetSlotIndexList())
+				wndEquip.SetSelectEmptySlotEvent(ui.__mem_func__(self.SelectEmptySlot))
+				wndEquip.SetSelectItemSlotEvent(ui.__mem_func__(self.SelectItemSlot))
+				wndEquip.SetUnselectItemSlotEvent(ui.__mem_func__(self.UseItemSlot))
+				wndEquip.SetUseSlotEvent(ui.__mem_func__(self.UseItemSlot))
+				wndEquip.SetOverInItemEvent(ui.__mem_func__(self.OverInItem))
+				wndEquip.SetOverOutItemEvent(ui.__mem_func__(self.OverOutItem))
+
+			self.slotIdxList = slotIdxList
+
+# Search 
+
+		self.SetInventoryPage(0)
+
+# add before
+
+		if app.__PENDANT__:
+			self.pendantPageIdx = 0
+			self.pendantPageOpened = 0
+			self.pendantQuestionDialog = None
+			self.GetChild("pendant_page_0").SAFE_SetEvent(self.__ClickPendantPage, 0)
+			self.GetChild("pendant_page_1").SAFE_SetEvent(self.__ClickPendantPage, 1)
+
+		self.SetEquipmentPage(0)
+
+# add in class InventoryWindow
+
+
+	if app.__PENDANT__:
+		def __CheckAllPendant(self):
+			for slotIdx in range(item.PENDANT_FIRE_SLOT, item.PENDANT_FIRST_SOUL_SLOT):
+				itemIdx = player.GetItemIndex(slotIdx)
+				if not itemIdx:
+					return False
+				item.SelectItem(itemIdx)
+				if item.GetItemName().find("+25") == -1:
+					return False
+			return True
+		def __AcceptPendantPage(self, pageIdx):
+			net.SendChatPacket("/pendant set %d" % pageIdx)
+			self.pendantQuestionDialog.Hide()
+			self.pendantQuestionDialog.Destroy()
+			self.pendantQuestionDialog = None
+		def __ClickPendantPage(self, pageIdx):
+			self.SetEquipmentPage(self.equipmentTypeIndex)
+			if not self.pendantPageOpened:
+				if not self.pendantQuestionDialog:
+					self.pendantQuestionDialog = uiCommon.ItemQuestDialog()
+				self.pendantQuestionDialog.SetTitleName("Pendant")
+				self.pendantQuestionDialog.Open([[51501, 200]])
+				self.pendantQuestionDialog.SelectEvent(self.__AcceptPendantPage, pageIdx)
+				return
+			net.SendChatPacket("/pendant set %d" % pageIdx)
+
+		def SetPendantPageIdx(self, pageIdx, secondOpened):
+			self.pendantPageIdx = pageIdx
+			self.pendantPageOpened = secondOpened
+			self.SetEquipmentPage(self.equipmentTypeIndex)
+
+	def SetEquipmentPage(self, pageIdx):
+		self.equipmentTypeIndex = pageIdx
+
+		for j in xrange(4):
+			if j == pageIdx:
+				self.GetChild("Equipment_Tab_"+str(j)).Down()
+				self.GetChild("Equipment_Base_Tab_"+str(j)).Show()
+			else:
+				self.GetChild("Equipment_Tab_"+str(j)).SetUp()
+				self.GetChild("Equipment_Base_Tab_"+str(j)).Hide()
+
+		if app.__PENDANT__:
+			if pageIdx == 3:
+				self.GetChild("pendant_page_"+str(self.pendantPageIdx)).Down()
+				self.GetChild("pendant_page_"+str(0 if self.pendantPageIdx else 1)).SetUp()
+
+				wndEquip = self.GetChild("EquipmentSlot_"+str(pageIdx))
+				wndEquip.ClearAllSlot()
+				wndEquip.AppendSlot(item.PENDANT_FIRE_SLOT, 61, 12, 32, 32)
+				wndEquip.AppendSlot(item.PENDANT_ICE_SLOT, 112, 49, 32, 32)
+				wndEquip.AppendSlot(item.PENDANT_THUNDER_SLOT, 112, 109, 32, 32)
+				wndEquip.AppendSlot(item.PENDANT_WIND_SLOT, 61, 146, 32, 32)
+				wndEquip.AppendSlot(item.PENDANT_DARK_SLOT, 11, 109, 32, 32)
+				wndEquip.AppendSlot(item.PENDANT_EARTH_SLOT, 11, 49, 32, 32)
+				wndEquip.AppendSlot(item.PENDANT_FIRST_SOUL_SLOT if self.pendantPageIdx == 0 else item.PENDANT_SECOND_SOUL_SLOT, 61, 70, 32, 32)
+
+				self.slotIdxList[3] = wndEquip.GetSlotIndexList()
+
+		self.RefreshEquipSlotWindow()
+
+# Search
+
+	def RefreshEquipSlotWindow(self):
+
+# Change
+
+	def RefreshEquipSlotWindow(self):
+		wndEquip = self.GetChild("EquipmentSlot_"+str(self.equipmentTypeIndex))
+		slotIdxList = self.slotIdxList[self.equipmentTypeIndex]
+		for slotNumber in slotIdxList:
+			wndEquip.SetItemSlot(slotNumber, player.GetItemIndex(slotNumber), 0)
+			if app.__PENDANT__:
+				if slotNumber==item.PENDANT_FIRST_SOUL_SLOT or slotNumber==item.PENDANT_SECOND_SOUL_SLOT:
+					if self.__CheckAllPendant():
+						wndEquip.ActivateSlot(slotNumber)
+					else:
+						wndEquip.DeactivateSlot(slotNumber)
+		wndEquip.RefreshSlot()
